@@ -11,10 +11,10 @@ import glob
 
 def show_face_detection(image, faces):
 	"""
-		Show an image with a rectangle draw that ecloses the face
+		Show an image with a rectangle draw that encloses the face
 	Args:
-		image: Image
-		faces: a set of x,y,w,h positions for each face detected
+		image: A loaded image 
+		faces: 1D array list with four entries that specifies the bounding box of the detected face
 	"""
 	fig, ax = plt.subplots(1)
 	ax.imshow(image)
@@ -22,20 +22,18 @@ def show_face_detection(image, faces):
 		ax.add_patch(patches.Rectangle((x, y), w, h, color='red', fill=False))
 	plt.show()
 
-def imageSelected(event, figure):
+def image_selected(event, figure):
 	"""
 		Display on terminal the name of the image which was "clicked"
 	Arg:
 		figure: The matplot figure object created on PlotGridImages function
 	"""
 	axlist = figure.axes
-	i = 0
-	for element in axlist:
-		if element == event.inaxes:
-			print(img_list_test[i])
-		i += 1
+	for i in range(len(axlist)):
+		if axlist[i] == event.inaxes:
+			print(img_list[i])
 
-def plotGridImages(figures, nrows = 1, ncols=1):
+def plot_grid(figures, nrows = 1, ncols=1, fullsize=False):
     """
     	Plot a dictionary of figures.
 
@@ -49,12 +47,15 @@ def plotGridImages(figures, nrows = 1, ncols=1):
     	axeslist.ravel()[ind].imshow(figures[title])
     	axeslist.ravel()[ind].set_axis_off() 
 
-    fig.subplots_adjust(wspace=0, top=1., bottom=0, left=0, right=1)
-    fig.canvas.mpl_connect("button_press_event", lambda event: imageSelected(event, fig))
+    fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0.02)
+    fig.canvas.mpl_connect("button_press_event", lambda event: image_selected(event, fig))
+    if fullsize:
+    	mng = plt.get_current_fig_manager()
+    	mng.resize(*mng.window.maxsize())
     plt.show()
 
 
-def containsFace(image):
+def detect_face(image):
 	"""
 		Check for valid images, that is, images that contain only one detectable face.
 	Args: 
@@ -69,27 +70,39 @@ def containsFace(image):
 	show_image(img, faces)
 	return len(faces) == 1
 
-def pruneErronousImage(image):
+def delete_erroneous_image(image):
 	"""
-		Delete a iamge file  
+		Delete an image from your data directory 
 	Args: 
 		image: image path
 	"""
 	os.remove(image)
 
+def get_set_images(dirname, imgtype, nimages):
+	"""
+	Create a grid of nimages and a list with their names. 
+	Args:
+		dirname: dir path where the images are 
+		imgtype: image type e.g png, jpg, jpeg. }
+		nimages: number of images 
 
-dirname = './data'
-filetype = 'jpg'
+	"""
+	images = glob.glob(dirname + '/*.' + imgtype)
+	grid = {}
 
-images = glob.glob(dirname + '/*.' + filetype)
+	if len(images) < nimages:
+		print("There are not enough images, only: ", len(images), " are available.")
+		exit()
 
-grid = {}
-img_list_test = []
-i = 0
-for image in images:
-	img = cv2.imread(image)
-	grid[image] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-	img_list_test.append(image)
-	i += 1
+	for i in range(nimages):
+		image = images[i]
+		#if detect_face(image):
+		img = cv2.imread(image)
+		try:
+			grid[image] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+		except:
+			delete_erroneous_image(image)
+	return images[:nimages], grid
 
-plotGridImages(grid, 6, 7)
+img_list, grid = get_set_images(dirname='./data', imgtype='jpg', nimages=72)
+plot_grid(grid, 10, 10, True)
